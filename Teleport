@@ -1,12 +1,34 @@
 -- ================================================
--- TELEPORT TAB (CROSS-EXECUTOR)
+-- TELEPORT TAB (CROSS-EXECUTOR FIXED)
 -- ================================================
 
 -- Cross-executor compatibility patch
 local Env = getgenv and getgenv() or shared or _G
-if not firesignal then function firesignal(s, ...) pcall(function() s:Fire(...) end) end end
-if not newcclosure then function newcclosure(fn) return fn end end
-if not setclipboard then function setclipboard(t) if writeclipboard then writeclipboard(t) elseif syn and syn.write_clipboard then syn.write_clipboard(t) end end end
+
+-- Safe firesignal (FIXED)
+if not firesignal then
+    function firesignal(signal, ...)
+        pcall(signal.Fire, signal, ...)
+    end
+end
+
+-- Safe newcclosure
+if not newcclosure then
+    function newcclosure(fn)
+        return fn
+    end
+end
+
+-- Safe setclipboard
+if not setclipboard then
+    function setclipboard(text)
+        if writeclipboard then
+            writeclipboard(text)
+        elseif syn and syn.write_clipboard then
+            syn.write_clipboard(text)
+        end
+    end
+end
 
 repeat task.wait() until Env.Window
 local Window = Env.Window
