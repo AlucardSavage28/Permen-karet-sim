@@ -1,5 +1,5 @@
 -- ================================================
--- ACTIVITY WEBHOOK TAB (CROSS-EXECUTOR FIXED)
+-- ACTIVITY INFO TAB (CROSS-EXECUTOR FIXED)
 -- ================================================
 
 -- Cross-executor compatibility patch
@@ -33,7 +33,7 @@ end
 repeat task.wait() until Env.Window
 local Window = Env.Window
 
-local ActivityTab = Window:CreateTab("Activity Webhook", nil)
+local ActivityTab = Window:CreateTab("Activity Info", nil)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
@@ -112,10 +112,11 @@ end)
 -- ======================================
 -- UI
 -- ======================================
-ActivityTab:CreateSection("Activity Webhook")
+ActivityTab:CreateSection("Activity Info")
 
 ActivityTab:CreateLabel("Sends webhook when your character is actively doing something")
 ActivityTab:CreateLabel("Only sends when the action is actually being performed, not on toggle")
+ActivityTab:CreateLabel("Discord User ID is used by other tabs for pinging you!")
 
 ActivityTab:CreateInput({
     Name = "Activity Webhook URL",
@@ -154,4 +155,4 @@ ActivityTab:CreateToggle({
     end
 })
 
-print("[Activity Webhook] Loaded!")
+print("[Activity Info] Loaded!")
