@@ -1,16 +1,21 @@
 -- ================================================
--- ACTIVITY INFO TAB (CROSS-EXECUTOR)
+-- ACTIVITY WEBHOOK TAB (CROSS-EXECUTOR FIXED)
 -- ================================================
 
 -- Cross-executor compatibility patch
 local Env = getgenv and getgenv() or shared or _G
 
--- Safe firesignal
+-- Safe firesignal (FIXED)
 if not firesignal then
     function firesignal(signal, ...)
-        pcall(function()
-            signal:Fire(...)
-        end)
+        pcall(signal.Fire, signal, ...)
+    end
+end
+
+-- Safe newcclosure
+if not newcclosure then
+    function newcclosure(fn)
+        return fn
     end
 end
 
@@ -28,14 +33,13 @@ end
 repeat task.wait() until Env.Window
 local Window = Env.Window
 
-local ActivityTab = Window:CreateTab("Activity Info", nil)
+local ActivityTab = Window:CreateTab("Activity Webhook", nil)
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
--- Cross-executor request
 local request = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
 
 if not request then
@@ -150,4 +154,4 @@ ActivityTab:CreateToggle({
     end
 })
 
-print("[Activity Info] Loaded!")
+print("[Activity Webhook] Loaded!")
