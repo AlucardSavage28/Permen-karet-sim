@@ -1,16 +1,14 @@
 -- ================================================
--- WEBHOOK TAB (CROSS-EXECUTOR + STUCK DETECTION)
+-- WEBHOOK TAB (CROSS-EXECUTOR FIXED)
 -- ================================================
 
 -- Cross-executor compatibility patch
 local Env = getgenv and getgenv() or shared or _G
 
--- Safe firesignal
+-- Safe firesignal (FIXED)
 if not firesignal then
     function firesignal(signal, ...)
-        pcall(function()
-            signal:Fire(...)
-        end)
+        pcall(signal.Fire, signal, ...)
     end
 end
 
@@ -376,7 +374,7 @@ task.spawn(function()
 end)
 
 -- ======================================
--- REGULAR ONLINE PING (EVERY 30 MIN - WITH HATCH RATE)
+-- REGULAR ONLINE PING (EVERY 30 MIN - NO PING)
 -- ======================================
 local startTime = os.time()
 local lastPingTime = os.time()
