@@ -1,39 +1,10 @@
 -- ================================================
--- DICE BOARD TAB (CROSS-EXECUTOR FIXED)
+-- DICEBOARD TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local DiceBoardTab = Window:CreateTab("Dice Board", nil)
+local DiceBoardTab = Window:CreateTab("Dice Board")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -57,6 +28,9 @@ local targetTile = "Chance"
 local running = false
 local thread = nil
 
+-- ======================================
+-- FUNCTIONS
+-- ======================================
 local function getNode()
     for name, piece in pairs(Board.Pieces) do
         if name == player.Name then
@@ -84,8 +58,8 @@ local function getClosest(current, list)
 end
 
 local function hasGoldenDice()
-    if Env.remainingItems and Env.remainingItems["Golden Dice"] then
-        return Env.remainingItems["Golden Dice"] > 0
+    if getgenv().remainingItems and getgenv().remainingItems["Golden Dice"] then
+        return getgenv().remainingItems["Golden Dice"] > 0
     end
     return false
 end
@@ -174,13 +148,13 @@ DiceBoardTab:CreateSection("Settings")
 
 DiceBoardTab:CreateDropdown({
     Name = "Target Tile",
-    CurrentOption = {"Chance"},
+    CurrentOption = "Chance",
     Options = {
         "Chance","Dice-Key","Dice","Giant-Dice","Golden-Dice",
         "Infinity-Elixir","Special-Egg","Super-Ticket","Basic"
     },
     Callback = function(v)
-        targetTile = v[1]
+        targetTile = v
     end
 })
 
@@ -202,4 +176,4 @@ DiceBoardTab:CreateToggle({
     end
 })
 
-print("[DiceBoard] Loaded!")
+print("[Dice Board] Loaded!")
