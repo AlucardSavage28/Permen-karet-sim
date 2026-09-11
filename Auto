@@ -1,39 +1,10 @@
 -- ================================================
--- AUTO TAB (CROSS-EXECUTOR FIXED)
+-- AUTO TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local AutoTab = Window:CreateTab("Auto", nil)
+local AutoTab = Window:CreateTab("Auto")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
@@ -51,7 +22,7 @@ end
 -- ======================================
 -- LOAD SAVED SETTINGS
 -- ======================================
-local settings = Env.HubSettings or {}
+local settings = getgenv().HubSettings or {}
 if not settings.auto then settings.auto = {} end
 local autoSettings = settings.auto
 
@@ -196,13 +167,13 @@ AutoTab:CreateToggle({
     Callback = function(v)
         presentEnabled = v
         autoSettings.presentRain = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             local wasCollecting = false
             presentThread = task.spawn(function()
                 while presentEnabled do
-                    if Env.questActive then
+                    if getgenv().questActive then
                         task.wait(0.5)
                         continue
                     end
@@ -210,15 +181,15 @@ AutoTab:CreateToggle({
                     local count = collectAllPresents()
                     if count > 0 then
                         if not wasCollecting then
-                            Env.ActivityStatus.current = "Collecting Presents (" .. count .. " found)"
-                            Env.ActivityStatus.trigger = true
+                            getgenv().ActivityStatus.current = "Collecting Presents (" .. count .. " found)"
+                            getgenv().ActivityStatus.trigger = true
                             wasCollecting = true
                         end
                         
                     else
                         if wasCollecting then
-                            Env.ActivityStatus.current = "Done collecting presents"
-                            Env.ActivityStatus.trigger = true
+                            getgenv().ActivityStatus.current = "Done collecting presents"
+                            getgenv().ActivityStatus.trigger = true
                             wasCollecting = false
                         end
                     end
@@ -236,17 +207,16 @@ AutoTab:CreateToggle({
 -- ======================================
 AutoTab:CreateSection("Auto Rune/Fragment")
 
--- Rune #1 (Luck)
 AutoTab:CreateDropdown({
     Name = "Luck Rune Tier",
     Options = {"Luck Tier 1", "Luck Tier 2", "Luck Tier 3"},
-    CurrentOption = {autoSettings.luckRuneTier or "Luck Tier 1"},
+    CurrentOption = autoSettings.luckRuneTier or "Luck Tier 1",
     Callback = function(v)
-        local split = string.split(v[1], " ")
+        local split = string.split(v, " ")
         rune1Type = split[1]
         rune1Tier = split[3]
-        autoSettings.luckRuneTier = v[1]
-        Env.HubSettings.auto = autoSettings
+        autoSettings.luckRuneTier = v
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
     end
 })
@@ -261,7 +231,7 @@ AutoTab:CreateInput({
         if n then
             rune1Amount = n
             autoSettings.luckRuneAmount = n
-            Env.HubSettings.auto = autoSettings
+            getgenv().HubSettings.auto = autoSettings
             saveHubSettings()
         end
     end
@@ -274,8 +244,8 @@ AutoTab:CreateToggle({
         rune1Running = v
         if v then
             rune1Thread = task.spawn(function()
-                Env.ActivityStatus.current = "Using " .. rune1Type .. " Rune " .. rune1Amount
-                Env.ActivityStatus.trigger = true
+                getgenv().ActivityStatus.current = "Using " .. rune1Type .. " Rune " .. rune1Amount
+                getgenv().ActivityStatus.trigger = true
                 pcall(function() RE:FireServer("UseRune", rune1Type, tonumber(rune1Tier), rune1Amount) end)
                 rune1Running = false
             end)
@@ -285,17 +255,16 @@ AutoTab:CreateToggle({
     end
 })
 
--- Rune #2 (Secret)
 AutoTab:CreateDropdown({
     Name = "Secret Rune Tier",
     Options = {"Secret Tier 1", "Secret Tier 2", "Secret Tier 3"},
-    CurrentOption = {autoSettings.secretRuneTier or "Secret Tier 1"},
+    CurrentOption = autoSettings.secretRuneTier or "Secret Tier 1",
     Callback = function(v)
-        local split = string.split(v[1], " ")
+        local split = string.split(v, " ")
         rune2Type = split[1]
         rune2Tier = split[3]
-        autoSettings.secretRuneTier = v[1]
-        Env.HubSettings.auto = autoSettings
+        autoSettings.secretRuneTier = v
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
     end
 })
@@ -310,7 +279,7 @@ AutoTab:CreateInput({
         if n then
             rune2Amount = n
             autoSettings.secretRuneAmount = n
-            Env.HubSettings.auto = autoSettings
+            getgenv().HubSettings.auto = autoSettings
             saveHubSettings()
         end
     end
@@ -323,8 +292,8 @@ AutoTab:CreateToggle({
         rune2Running = v
         if v then
             rune2Thread = task.spawn(function()
-                Env.ActivityStatus.current = "Using " .. rune2Type .. " Rune " .. rune2Amount
-                Env.ActivityStatus.trigger = true
+                getgenv().ActivityStatus.current = "Using " .. rune2Type .. " Rune " .. rune2Amount
+                getgenv().ActivityStatus.trigger = true
                 pcall(function() RE:FireServer("UseRune", rune2Type, tonumber(rune2Tier), rune2Amount) end)
                 rune2Running = false
             end)
@@ -334,17 +303,16 @@ AutoTab:CreateToggle({
     end
 })
 
--- Rune #3 (Bubble)
 AutoTab:CreateDropdown({
     Name = "Bubble Rune Tier",
     Options = {"Bubble Tier 1", "Bubble Tier 2", "Bubble Tier 3"},
-    CurrentOption = {autoSettings.bubbleRuneTier or "Bubble Tier 1"},
+    CurrentOption = autoSettings.bubbleRuneTier or "Bubble Tier 1",
     Callback = function(v)
-        local split = string.split(v[1], " ")
+        local split = string.split(v, " ")
         rune3Type = split[1]
         rune3Tier = split[3]
-        autoSettings.bubbleRuneTier = v[1]
-        Env.HubSettings.auto = autoSettings
+        autoSettings.bubbleRuneTier = v
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
     end
 })
@@ -359,7 +327,7 @@ AutoTab:CreateInput({
         if n then
             rune3Amount = n
             autoSettings.bubbleRuneAmount = n
-            Env.HubSettings.auto = autoSettings
+            getgenv().HubSettings.auto = autoSettings
             saveHubSettings()
         end
     end
@@ -372,8 +340,8 @@ AutoTab:CreateToggle({
         rune3Running = v
         if v then
             rune3Thread = task.spawn(function()
-                Env.ActivityStatus.current = "Using " .. rune3Type .. " Rune " .. rune3Amount
-                Env.ActivityStatus.trigger = true
+                getgenv().ActivityStatus.current = "Using " .. rune3Type .. " Rune " .. rune3Amount
+                getgenv().ActivityStatus.trigger = true
                 pcall(function() RE:FireServer("UseRune", rune3Type, tonumber(rune3Tier), rune3Amount) end)
                 rune3Running = false
             end)
@@ -383,14 +351,13 @@ AutoTab:CreateToggle({
     end
 })
 
--- Fragment
 AutoTab:CreateToggle({
     Name = "Auto Use All Fragment",
     CurrentValue = autoSettings.autoFragment or false,
     Callback = function(v)
         fragRunning = v
         autoSettings.autoFragment = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             fragThread = task.spawn(function()
@@ -419,7 +386,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         bubbleEnabled = v
         autoSettings.autoBubble = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             bubbleThread = task.spawn(function()
@@ -440,7 +407,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         sellEnabled = v
         autoSettings.autoSell = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -494,7 +461,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         dailyRunning = v
         autoSettings.dailyStreak = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             dailyThread = task.spawn(function()
@@ -597,8 +564,9 @@ AutoTab:CreateToggle({
                     end
                     
                     if claimed then
-                        Env.ActivityStatus.current = "Signed in for your Daily Streak! (" .. streakText .. ")"
-                        Env.ActivityStatus.trigger = true
+                        getgenv().ActivityStatus.current = "Signed in for your Daily Streak! (" .. streakText .. ")"
+                        getgenv().ActivityStatus.trigger = true
+                        print("[Auto] Daily streak claimed! (" .. streakText .. ")")
                     end
                     
                     task.wait(86400)
@@ -616,7 +584,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         forfeitRunning = v
         autoSettings.autoForfeit = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             forfeitThread = task.spawn(function()
@@ -640,8 +608,9 @@ AutoTab:CreateToggle({
                 
                 if hasStreak then
                     pcall(function() RE:FireServer("DailyRewardsForfeitStreak") end)
-                    Env.ActivityStatus.current = "Forfeited Daily Streak!"
-                    Env.ActivityStatus.trigger = true
+                    getgenv().ActivityStatus.current = "Forfeited Daily Streak!"
+                    getgenv().ActivityStatus.trigger = true
+                    print("[Auto] Daily streak forfeited!")
                 end
                 
                 forfeitRunning = false
@@ -657,7 +626,7 @@ AutoTab:CreateToggle({
     CurrentValue = autoSettings.autoXLIndex or false,
     Callback = function(v)
         autoSettings.autoXLIndex = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             task.spawn(function()
@@ -679,13 +648,15 @@ AutoTab:CreateToggle({
                         local afterCount = afterClaimed and #afterClaimed or 0
                         
                         if afterCount > beforeCount then
-                            Env.ActivityStatus.current = "Claimed XL Index Reward! (" .. afterCount .. "/" .. totalTasks .. ")"
-                            Env.ActivityStatus.trigger = true
+                            getgenv().ActivityStatus.current = "Claimed XL Index Reward! (" .. afterCount .. "/" .. totalTasks .. ")"
+                            getgenv().ActivityStatus.trigger = true
+                            print("[XL Index] Claimed! " .. afterCount .. "/" .. totalTasks)
                             task.wait(5)
                         else
                             task.wait(600)
                         end
                     else
+                        print("[XL Index] All complete!")
                         break
                     end
                 end
@@ -735,7 +706,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         orbEnabled = v
         autoSettings.autoGoldenOrb = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             orbThread = task.spawn(function()
@@ -756,7 +727,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         pickupEnabled = v
         autoSettings.autoPickup = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             constants.DefaultPickupRadius = math.huge
@@ -772,7 +743,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         playtimeRunning = v
         autoSettings.autoPlaytime = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             playtimeThread = task.spawn(function()
@@ -794,12 +765,12 @@ AutoTab:CreateSection("Auto Open Box")
 
 AutoTab:CreateDropdown({
     Name = "Select Box",
-    CurrentOption = {selectedBox},
+    CurrentOption = selectedBox,
     Options = boxList,
     Callback = function(v)
-        selectedBox = v[1] or v
-        autoSettings.selectedBox = selectedBox
-        Env.HubSettings.auto = autoSettings
+        selectedBox = v
+        autoSettings.selectedBox = v
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
     end
 })
@@ -810,7 +781,8 @@ AutoTab:CreateButton({
         boxList = getBoxes()
         selectedBox = boxList[1] or "Mystery Box"
         local text = "Found " .. #boxList .. " boxes"
-        pcall(function() boxListLabel:SetText(text) end)
+        pcall(function() boxListLabel.Text = text end)
+        print("[Auto] Box Rescan: " .. text)
     end
 })
 
@@ -822,7 +794,7 @@ AutoTab:CreateToggle({
     Callback = function(v)
         boxEnabled = v
         autoSettings.autoOpenBox = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
             boxThread = task.spawn(function()
@@ -832,8 +804,8 @@ AutoTab:CreateToggle({
                     local amount = data and data.Powerups and data.Powerups[selectedBox] or 0
                     if amount > 0 then
                         local openAmount = math.min(amount, 25)
-                        Env.ActivityStatus.current = "Opening " .. selectedBox .. " x" .. openAmount
-                        Env.ActivityStatus.trigger = true
+                        getgenv().ActivityStatus.current = "Opening " .. selectedBox .. " x" .. openAmount
+                        getgenv().ActivityStatus.trigger = true
                         pcall(function() fire("UseGift", selectedBox, openAmount) end)
                         for i = 1, openAmount do
                             if not boxEnabled then break end
@@ -865,13 +837,13 @@ AutoTab:CreateToggle({
     Callback = function(v)
         fishRunning = v
         autoSettings.autoFishing = v
-        Env.HubSettings.auto = autoSettings
+        getgenv().HubSettings.auto = autoSettings
         saveHubSettings()
         if v then
-            Env.ActivityStatus.current = "Starting Fishing quest..."
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Starting Fishing quest..."
+            getgenv().ActivityStatus.trigger = true
             
-            Env.RdotAfishingConfig = {
+            getgenv().RdotAfishingConfig = {
                 Mode = "Quest",
                 Zone = "Fisher's Island",
             }
@@ -892,15 +864,15 @@ AutoTab:CreateToggle({
                 end
             end
         else
-            Env.ActivityStatus.current = "Done Fishing Quest"
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Done Fishing Quest"
+            getgenv().ActivityStatus.trigger = true
             
-            Env.RdotAfishingConfig = {
+            getgenv().RdotAfishingConfig = {
                 Mode = "Off",
                 Zone = "Fisher's Island",
                 Enabled = false
             }
-            Env.RdotAfishingStop = true
+            getgenv().RdotAfishingStop = true
             task.wait(0.5)
             if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
                 player.Character.HumanoidRootPart.CFrame = player.Character.HumanoidRootPart.CFrame + Vector3.new(0, 50, 0)
@@ -908,312 +880,5 @@ AutoTab:CreateToggle({
         end
     end
 })
-
--- ======================================
--- AUTO-START SAVED TOGGLES
--- ======================================
-if autoSettings.presentRain then
-    presentEnabled = true
-    local wasCollecting = false
-    presentThread = task.spawn(function()
-        while presentEnabled do
-            if Env.questActive then
-                task.wait(0.5)
-                continue
-            end
-            local count = collectAllPresents()
-            if count > 0 then
-                if not wasCollecting then
-                    Env.ActivityStatus.current = "Collecting Presents (" .. count .. " found)"
-                    Env.ActivityStatus.trigger = true
-                    wasCollecting = true
-                end
-                
-            else
-                if wasCollecting then
-                    Env.ActivityStatus.current = "Done collecting presents"
-                    Env.ActivityStatus.trigger = true
-                    wasCollecting = false
-                end
-            end
-            task.wait(0.5)
-        end
-    end)
-end
-
-if autoSettings.autoBubble then
-    bubbleEnabled = true
-    bubbleThread = task.spawn(function()
-        while bubbleEnabled do
-            pcall(function() fire("BlowBubble") end)
-            task.wait(0.01)
-        end
-    end)
-end
-
-if autoSettings.autoSell then
-    sellEnabled = true
-    local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    local returnCFrame = root and root.CFrame or nil
-    sellThread = task.spawn(function()
-        local needsSell = false
-        while sellEnabled do
-            local bubbles = getBubbles()
-            if bubbles >= BUBBLE_CAP then needsSell = true
-            elseif bubbles < 100000000 then needsSell = false end
-            if needsSell and bubbles >= BUBBLE_CAP then
-                local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-                if root then root.CFrame = CFrame.new(SELL_POS) end
-                task.wait(0.2)
-                for i = 1, 3 do
-                    local before = getBubbles()
-                    pcall(function() fire("SellBubble") end)
-                    task.wait(0.3)
-                    local after = getBubbles()
-                    if after < before then break end
-                end
-                if returnCFrame and root then
-                    root.CFrame = returnCFrame
-                    root.Velocity = Vector3.zero
-                    root.RotVelocity = Vector3.zero
-                end
-                task.wait(3)
-            end
-            task.wait(1)
-        end
-    end)
-end
-
-if autoSettings.dailyStreak then
-    dailyRunning = true
-    dailyThread = task.spawn(function()
-        while dailyRunning do
-            local playerGui = player:FindFirstChild("PlayerGui")
-            
-            if playerGui then
-                local screenGui = playerGui:FindFirstChild("ScreenGui")
-                if screenGui then
-                    local hud = screenGui:FindFirstChild("HUD")
-                    if hud then
-                        local left = hud:FindFirstChild("Left")
-                        if left then
-                            local buttons = left:FindFirstChild("Buttons")
-                            if buttons then
-                                local dailyBtn = buttons:FindFirstChild("DailyRewards")
-                                if dailyBtn then
-                                    local btn = dailyBtn:FindFirstChild("Button")
-                                    if btn then
-                                        firesignal(btn.Activated)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            task.wait(0.5)
-            
-            local streakText = "Unknown"
-            if playerGui then
-                local screenGui = playerGui:FindFirstChild("ScreenGui")
-                if screenGui then
-                    local dailyRewards = screenGui:FindFirstChild("DailyRewards")
-                    if dailyRewards then
-                        local shop = dailyRewards:FindFirstChild("Shop")
-                        if shop then
-                            local streak = shop:FindFirstChild("Streak")
-                            if streak then
-                                local label = streak:FindFirstChild("Label")
-                                if label then
-                                    streakText = label.Text
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            local claimed = false
-            if playerGui then
-                local screenGui = playerGui:FindFirstChild("ScreenGui")
-                if screenGui then
-                    local dailyRewards = screenGui:FindFirstChild("DailyRewards")
-                    if dailyRewards then
-                        local login = dailyRewards:FindFirstChild("Login")
-                        if login then
-                            local loginFrame = login:FindFirstChild("Frame")
-                            if loginFrame then
-                                local claim = loginFrame:FindFirstChild("Claim")
-                                if claim then
-                                    local claimBtn = claim:FindFirstChild("Button")
-                                    if claimBtn and claimBtn.Visible then
-                                        firesignal(claimBtn.Activated)
-                                        claimed = true
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            pcall(function() RE:FireServer("DailyRewardClaimStars") end)
-            claimed = true
-            
-            task.wait(0.3)
-            
-            if playerGui then
-                local screenGui = playerGui:FindFirstChild("ScreenGui")
-                if screenGui then
-                    local hud = screenGui:FindFirstChild("HUD")
-                    if hud then
-                        local left = hud:FindFirstChild("Left")
-                        if left then
-                            local buttons = left:FindFirstChild("Buttons")
-                            if buttons then
-                                local dailyBtn = buttons:FindFirstChild("DailyRewards")
-                                if dailyBtn then
-                                    local btn = dailyBtn:FindFirstChild("Button")
-                                    if btn then
-                                        firesignal(btn.Activated)
-                                    end
-                                end
-                            end
-                        end
-                    end
-                end
-            end
-            
-            if claimed then
-                Env.ActivityStatus.current = "Signed in for your Daily Streak! (" .. streakText .. ")"
-                Env.ActivityStatus.trigger = true
-            end
-            
-            task.wait(86400)
-        end
-    end)
-end
-
-if autoSettings.autoForfeit then
-    forfeitRunning = true
-    forfeitThread = task.spawn(function()
-        local playerGui = player:FindFirstChild("PlayerGui")
-        local hasStreak = false
-        if playerGui then
-            local screenGui = playerGui:FindFirstChild("ScreenGui")
-            if screenGui then
-                local dailyRewards = screenGui:FindFirstChild("DailyRewards")
-                if dailyRewards then
-                    local streak = dailyRewards:FindFirstChild("Streak")
-                    if streak then
-                        local label = streak:FindFirstChild("Label")
-                        if label and label.Text ~= "" and label.Text ~= "0" then
-                            hasStreak = true
-                        end
-                    end
-                end
-            end
-        end
-        
-        if hasStreak then
-            pcall(function() RE:FireServer("DailyRewardsForfeitStreak") end)
-            Env.ActivityStatus.current = "Forfeited Daily Streak!"
-            Env.ActivityStatus.trigger = true
-        end
-    end)
-end
-
-if autoSettings.autoGoldenOrb then
-    orbEnabled = true
-    orbThread = task.spawn(function()
-        while orbEnabled do
-            pcall(function() fire("UseGoldenOrb") end)
-            task.wait(1)
-        end
-    end)
-end
-
-if autoSettings.autoPickup then
-    pickupEnabled = true
-    constants.DefaultPickupRadius = math.huge
-end
-
-if autoSettings.autoFragment then
-    fragRunning = true
-    fragThread = task.spawn(function()
-        while fragRunning do
-            pcall(function() RE:FireServer("UseFragment", "Green", 1) end)
-            pcall(function() RE:FireServer("UseFragment", "Blue", 1) end)
-            pcall(function() RE:FireServer("UseFragment", "Purple", 1) end)
-            pcall(function() RE:FireServer("UseFragment", "Rainbow", 1) end)
-            task.wait(2)
-        end
-    end)
-end
-
-if autoSettings.autoOpenBox then
-    boxEnabled = true
-    boxThread = task.spawn(function()
-        local VIM = game:GetService("VirtualInputManager")
-        while boxEnabled do
-            local data = LocalData:Get()
-            local amount = data and data.Powerups and data.Powerups[selectedBox] or 0
-            if amount > 0 then
-                local openAmount = math.min(amount, 25)
-                Env.ActivityStatus.current = "Opening " .. selectedBox .. " x" .. openAmount
-                Env.ActivityStatus.trigger = true
-                pcall(function() fire("UseGift", selectedBox, openAmount) end)
-                for i = 1, openAmount do
-                    if not boxEnabled then break end
-                    VIM:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                    VIM:SendMouseButtonEvent(0, 0, 0, false, game, 1)
-                end
-                task.wait(0.1)
-            else
-                task.wait(5)
-            end
-        end
-    end)
-end
-
-if autoSettings.autoPlaytime then
-    playtimeRunning = true
-    playtimeThread = task.spawn(function()
-        while playtimeRunning do
-            pcall(function() RE:FireServer("ClaimAllPlaytime") end)
-            task.wait(60)
-        end
-    end)
-end
-
-if autoSettings.autoXLIndex then
-    task.spawn(function()
-        local XLIndexTasks = require(ReplicatedStorage.Shared.Data.XLIndexTasks)
-        local totalTasks = 0
-        for _ in pairs(XLIndexTasks) do totalTasks = totalTasks + 1 end
-        while autoSettings.autoXLIndex do
-            local data = LocalData:Get()
-            local claimed = data and data.XLIndexClaimed
-            local beforeCount = claimed and #claimed or 0
-            if beforeCount < totalTasks then
-                pcall(function() RE:FireServer("ClaimXLIndexRewards") end)
-                task.wait(1)
-                local data2 = LocalData:Get()
-                local afterClaimed = data2 and data2.XLIndexClaimed
-                local afterCount = afterClaimed and #afterClaimed or 0
-                if afterCount > beforeCount then
-                    Env.ActivityStatus.current = "Claimed XL Index Reward! (" .. afterCount .. "/" .. totalTasks .. ")"
-                    Env.ActivityStatus.trigger = true
-                    task.wait(5)
-                else
-                    task.wait(600)
-                end
-            else
-                break
-            end
-        end
-    end)
-end
 
 print("[Auto] Loaded!")
