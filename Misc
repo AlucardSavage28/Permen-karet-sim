@@ -1,39 +1,10 @@
 -- ================================================
--- MISC TAB (CROSS-EXECUTOR FIXED)
+-- MISC TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local OtherTab = Window:CreateTab("Misc", nil)
+local OtherTab = Window:CreateTab("Misc")
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -327,6 +298,7 @@ local function fpsJMX()
             v.Texture = ""
         end
     end
+    print("[FPS] JMX FPS Boost applied!")
 end
 
 local function fps1_DisableParticles()
@@ -354,6 +326,7 @@ local function fps1_DisableParticles()
         end
         if count % 500 == 0 then task.wait(0.01) end
     end
+    print("[FPS] Disabled " .. count .. " effects")
 end
 
 local function fps2_HidePets()
@@ -375,6 +348,7 @@ local function fps2_HidePets()
         end
         if count % 500 == 0 then task.wait(0.01) end
     end
+    print("[FPS] Disabled " .. count .. " pet effects")
 end
 
 local function fps3_RemoveTextures()
@@ -402,6 +376,7 @@ local function fps3_RemoveTextures()
     end
     Lighting.GlobalShadows = false
     Lighting.Outlines = false
+    print("[FPS] Disabled " .. count .. " effects")
 end
 
 local function fullBright()
@@ -442,9 +417,9 @@ OtherTab:CreateSection("Auto Buy Shop")
 OtherTab:CreateDropdown({
     Name = "Select Shop",
     Options = {"shadow-shop", "alien-shop", "shard-shop", "dice-shop", "traveling-merchant"},
-    CurrentOption = {selectedShop},
+    CurrentOption = selectedShop,
     Callback = function(v)
-        selectedShop = v[1]
+        selectedShop = v
     end
 })
 
@@ -490,6 +465,7 @@ OtherTab:CreateButton({
     Name = "Reroll Shadow Shop Stock",
     Callback = function()
         pcall(function() RE:FireServer("ShopFreeReroll", "shadow-shop") end)
+        print("[Shop] Shadow Shop rerolled!")
     end
 })
 
@@ -497,6 +473,7 @@ OtherTab:CreateButton({
     Name = "Reroll Traveling Merchant Stock",
     Callback = function()
         pcall(function() RE:FireServer("ShopFreeReroll", "traveling-merchant") end)
+        print("[Shop] Traveling Merchant rerolled!")
     end
 })
 
