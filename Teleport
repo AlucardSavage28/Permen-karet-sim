@@ -1,39 +1,10 @@
 -- ================================================
--- TELEPORT TAB (CROSS-EXECUTOR FIXED)
+-- TELEPORT TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local TeleportTab = Window:CreateTab("Teleport", nil)
+local TeleportTab = Window:CreateTab("Teleport")
 
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -118,22 +89,22 @@ TeleportTab:CreateToggle({
                 while unlockRunning do
                     for name, pos in pairs(OVERWORLD) do
                         if not unlockRunning then break end
-                        Env.ActivityStatus.current = "Teleported to " .. name .. " (Overworld)"
-                        Env.ActivityStatus.trigger = true
+                        getgenv().ActivityStatus.current = "Teleported to " .. name .. " (Overworld)"
+                        getgenv().ActivityStatus.trigger = true
                         teleportTo(pos)
                         task.wait(1.5)
                     end
                     for name, pos in pairs(MINIGAME) do
                         if not unlockRunning then break end
-                        Env.ActivityStatus.current = "Teleported to " .. name .. " (Minigame Paradise)"
-                        Env.ActivityStatus.trigger = true
+                        getgenv().ActivityStatus.current = "Teleported to " .. name .. " (Minigame Paradise)"
+                        getgenv().ActivityStatus.trigger = true
                         teleportTo(pos)
                         task.wait(1.5)
                     end
                     for name, pos in pairs(SEVENSEAS) do
                         if not unlockRunning then break end
-                        Env.ActivityStatus.current = "Teleported to " .. name .. " (Seven Seas)"
-                        Env.ActivityStatus.trigger = true
+                        getgenv().ActivityStatus.current = "Teleported to " .. name .. " (Seven Seas)"
+                        getgenv().ActivityStatus.trigger = true
                         teleportTo(pos)
                         task.wait(1.5)
                     end
@@ -149,8 +120,8 @@ TeleportTab:CreateToggle({
 TeleportTab:CreateButton({
     Name = "Teleport to Shadow Realm (Unlock)",
     Callback = function()
-        Env.ActivityStatus.current = "Teleported to Shadow Realm"
-        Env.ActivityStatus.trigger = true
+        getgenv().ActivityStatus.current = "Teleported to Shadow Realm"
+        getgenv().ActivityStatus.trigger = true
         teleportTo(SHADOW_REALM)
     end
 })
@@ -160,6 +131,7 @@ TeleportTab:CreateButton({
 -- ======================================
 TeleportTab:CreateSection("Teleport")
 
+-- Overworld
 local overworldOptions = {}
 for name, _ in pairs(OVERWORLD) do
     table.insert(overworldOptions, name)
@@ -169,9 +141,9 @@ table.sort(overworldOptions)
 TeleportTab:CreateDropdown({
     Name = "The Overworld",
     Options = overworldOptions,
-    CurrentOption = {overworldSelected},
+    CurrentOption = overworldSelected,
     Callback = function(v)
-        overworldSelected = v[1]
+        overworldSelected = v
     end
 })
 
@@ -183,8 +155,8 @@ TeleportTab:CreateToggle({
         if v then
             overworldThread = task.spawn(function()
                 while overworldRunning do
-                    Env.ActivityStatus.current = "Teleported to " .. overworldSelected .. " (Overworld)"
-                    Env.ActivityStatus.trigger = true
+                    getgenv().ActivityStatus.current = "Teleported to " .. overworldSelected .. " (Overworld)"
+                    getgenv().ActivityStatus.trigger = true
                     teleportTo(OVERWORLD[overworldSelected])
                     task.wait(1.5)
                 end
@@ -195,6 +167,7 @@ TeleportTab:CreateToggle({
     end
 })
 
+-- Minigame
 local minigameOptions = {}
 for name, _ in pairs(MINIGAME) do
     table.insert(minigameOptions, name)
@@ -204,9 +177,9 @@ table.sort(minigameOptions)
 TeleportTab:CreateDropdown({
     Name = "Minigame Paradise",
     Options = minigameOptions,
-    CurrentOption = {minigameSelected},
+    CurrentOption = minigameSelected,
     Callback = function(v)
-        minigameSelected = v[1]
+        minigameSelected = v
     end
 })
 
@@ -218,8 +191,8 @@ TeleportTab:CreateToggle({
         if v then
             minigameThread = task.spawn(function()
                 while minigameRunning do
-                    Env.ActivityStatus.current = "Teleported to " .. minigameSelected .. " (Minigame Paradise)"
-                    Env.ActivityStatus.trigger = true
+                    getgenv().ActivityStatus.current = "Teleported to " .. minigameSelected .. " (Minigame Paradise)"
+                    getgenv().ActivityStatus.trigger = true
                     teleportTo(MINIGAME[minigameSelected])
                     task.wait(1.5)
                 end
@@ -230,6 +203,7 @@ TeleportTab:CreateToggle({
     end
 })
 
+-- Seven Seas
 local sevenseasOptions = {}
 for name, _ in pairs(SEVENSEAS) do
     table.insert(sevenseasOptions, name)
@@ -239,9 +213,9 @@ table.sort(sevenseasOptions)
 TeleportTab:CreateDropdown({
     Name = "Seven Seas",
     Options = sevenseasOptions,
-    CurrentOption = {sevenseasSelected},
+    CurrentOption = sevenseasSelected,
     Callback = function(v)
-        sevenseasSelected = v[1]
+        sevenseasSelected = v
     end
 })
 
@@ -253,8 +227,8 @@ TeleportTab:CreateToggle({
         if v then
             sevenseasThread = task.spawn(function()
                 while sevenseasRunning do
-                    Env.ActivityStatus.current = "Teleported to " .. sevenseasSelected .. " (Seven Seas)"
-                    Env.ActivityStatus.trigger = true
+                    getgenv().ActivityStatus.current = "Teleported to " .. sevenseasSelected .. " (Seven Seas)"
+                    getgenv().ActivityStatus.trigger = true
                     teleportTo(SEVENSEAS[sevenseasSelected])
                     task.wait(1.5)
                 end
@@ -268,8 +242,8 @@ TeleportTab:CreateToggle({
 TeleportTab:CreateButton({
     Name = "Teleport to Shadow Realm",
     Callback = function()
-        Env.ActivityStatus.current = "Teleported to Shadow Realm"
-        Env.ActivityStatus.trigger = true
+        getgenv().ActivityStatus.current = "Teleported to Shadow Realm"
+        getgenv().ActivityStatus.trigger = true
         teleportTo(SHADOW_REALM)
     end
 })
