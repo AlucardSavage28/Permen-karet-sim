@@ -1,39 +1,10 @@
 -- ================================================
--- TRADE TAB (CROSS-EXECUTOR FIXED)
+-- TRADE TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local TradeTab = Window:CreateTab("Trade", nil)
+local TradeTab = Window:CreateTab("Trade")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -85,8 +56,8 @@ local function getTargetPlayerName()
     
     if targetPlayerInput then
         pcall(function()
-            if targetPlayerInput.CurrentValue and targetPlayerInput.CurrentValue ~= "" then
-                targetPlayer = targetPlayerInput.CurrentValue
+            if targetPlayerInput.Text and targetPlayerInput.Text ~= "" then
+                targetPlayer = targetPlayerInput.Text
             end
         end)
     end
@@ -125,6 +96,9 @@ TradeTab:CreateToggle({
                         pcall(function()
                             Remote:FireServer("TradeRequest", target)
                         end)
+                        print("[Trade] Sent request to " .. target.Name)
+                    else
+                        print("[Trade] Player not found: '" .. name .. "'")
                     end
                     task.wait(0.5)
                 end
@@ -149,6 +123,9 @@ TradeTab:CreateToggle({
                         pcall(function()
                             Remote:FireServer("TradeAcceptRequest", target)
                         end)
+                        print("[Trade] Accepted request from " .. target.Name)
+                    else
+                        print("[Trade] Player not found: '" .. name .. "'")
                     end
                     task.wait(1)
                 end
@@ -221,8 +198,8 @@ TradeTab:CreateToggle({
                     end
                     
                     if #petNames > 0 then
-                        Env.ActivityStatus.current = "Auto moving pets to trade: " .. table.concat(petNames, ", ")
-                        Env.ActivityStatus.trigger = true
+                        getgenv().ActivityStatus.current = "Auto moving pets to trade: " .. table.concat(petNames, ", ")
+                        getgenv().ActivityStatus.trigger = true
                     end
                     
                     task.wait(0.5)
