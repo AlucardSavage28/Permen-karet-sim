@@ -1,39 +1,10 @@
 -- ================================================
--- ENCHANT TAB (CROSS-EXECUTOR FIXED)
+-- ENCHANT TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local EnchantTab = Window:CreateTab("Enchant", nil)
+local EnchantTab = Window:CreateTab("Enchant")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -48,7 +19,7 @@ local RemoteEvent = RemoteContainer.RemoteEvent
 -- ======================================
 -- LOAD SAVED SETTINGS
 -- ======================================
-local settings = Env.HubSettings or {}
+local settings = getgenv().HubSettings or {}
 if not settings.enchant then settings.enchant = {} end
 local enchantSettings = settings.enchant
 
@@ -154,6 +125,9 @@ local function enchantSingleSlot(petId, targetSlot, targetEnchantId)
     return false
 end
 
+-- ======================================
+-- CHECK ENCHANT STATUS
+-- ======================================
 local function checkEnchantStatus()
     local pets = getEquippedPets()
     local missing = {slot1 = 0, slot2 = 0}
@@ -175,6 +149,9 @@ local function checkEnchantStatus()
     return missing
 end
 
+-- ======================================
+-- RE-ENCHANT MISSING SLOTS
+-- ======================================
 local function reEnchantMissingSlots(missing)
     local pets = getEquippedPets()
     if #pets == 0 then return end
@@ -204,6 +181,9 @@ local function reEnchantMissingSlots(missing)
     end
 end
 
+-- ======================================
+-- MONITOR LOOP
+-- ======================================
 local function startMonitor()
     while monitorRunning do
         task.wait(10)
@@ -228,11 +208,11 @@ EnchantTab:CreateLabel("NOTE: Make sure to check your Pets Enchant. If Secret Hu
 EnchantTab:CreateDropdown({
     Name = "Slot 1 Enchant",
     Options = ALL_ENCHANTS,
-    CurrentOption = {TARGET_ENCHANTS[1].Id},
+    CurrentOption = TARGET_ENCHANTS[1].Id,
     Callback = function(v)
-        TARGET_ENCHANTS[1].Id = v[1]
-        enchantSettings.slot1 = v[1]
-        Env.HubSettings.enchant = enchantSettings
+        TARGET_ENCHANTS[1].Id = v
+        enchantSettings.slot1 = v
+        getgenv().HubSettings.enchant = enchantSettings
         saveHubSettings()
     end
 })
@@ -240,11 +220,11 @@ EnchantTab:CreateDropdown({
 EnchantTab:CreateDropdown({
     Name = "Slot 2 Enchant",
     Options = ALL_ENCHANTS,
-    CurrentOption = {TARGET_ENCHANTS[2].Id},
+    CurrentOption = TARGET_ENCHANTS[2].Id,
     Callback = function(v)
-        TARGET_ENCHANTS[2].Id = v[1]
-        enchantSettings.slot2 = v[1]
-        Env.HubSettings.enchant = enchantSettings
+        TARGET_ENCHANTS[2].Id = v
+        enchantSettings.slot2 = v
+        getgenv().HubSettings.enchant = enchantSettings
         saveHubSettings()
     end
 })
@@ -257,8 +237,8 @@ EnchantTab:CreateToggle({
         monitorRunning = v
         
         if v then
-            Env.ActivityStatus.current = "Auto Enchanting with " .. ENCHANT_DISPLAY[TARGET_ENCHANTS[1].Id] .. " + " .. ENCHANT_DISPLAY[TARGET_ENCHANTS[2].Id]
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Auto Enchanting with " .. ENCHANT_DISPLAY[TARGET_ENCHANTS[1].Id] .. " + " .. ENCHANT_DISPLAY[TARGET_ENCHANTS[2].Id]
+            getgenv().ActivityStatus.trigger = true
             
             monitorThread = task.spawn(startMonitor)
             
@@ -294,7 +274,7 @@ EnchantTab:CreateSection("Simple Enchant")
 EnchantTab:CreateLabel("If you use this please wait till it finish enchanting and check ur shadow crystal")
 
 local function RunEnchant(primary, secondary, item1, item2)
-    Env.Settings = {
+    getgenv().Settings = {
         Enchanting = {
             Enabled = true,
             PRIMARY_ENCHANTS = primary,
@@ -308,16 +288,57 @@ local function RunEnchant(primary, secondary, item1, item2)
     loadstring(game:HttpGet("https://raw.githubusercontent.com/issascripts/bgsi/refs/heads/main/coolestautoenchantintown.lua"))()
 end
 
-EnchantTab:CreateButton({Name = "Secret Hunter + Ultra Roller", Callback = function() RunEnchant({"Secret Hunter","Ultra Roller"}, {"Secret Hunter","Ultra Roller"}, "Shadow Crystal", "Shadow Crystal") end})
-EnchantTab:CreateButton({Name = "Ultra Roller + High Roller", Callback = function() RunEnchant({"High Roller","Ultra Roller"}, {"High Roller","Ultra Roller"}, "Shadow Crystal", "Gems") end})
-EnchantTab:CreateButton({Name = "Shiny Seeker + Ultra Roller", Callback = function() RunEnchant({"Shiny Seeker","Ultra Roller"}, {"Shiny Seeker","Ultra Roller"}, "Shadow Crystal", "Shadow Crystal") end})
+EnchantTab:CreateButton({
+    Name = "Secret Hunter + Ultra Roller",
+    Callback = function()
+        RunEnchant({"Secret Hunter","Ultra Roller"}, {"Secret Hunter","Ultra Roller"}, "Shadow Crystal", "Shadow Crystal")
+    end
+})
+
+EnchantTab:CreateButton({
+    Name = "Ultra Roller + High Roller",
+    Callback = function()
+        RunEnchant({"High Roller","Ultra Roller"}, {"High Roller","Ultra Roller"}, "Shadow Crystal", "Gems")
+    end
+})
+
+EnchantTab:CreateButton({
+    Name = "Shiny Seeker + Ultra Roller",
+    Callback = function()
+        RunEnchant({"Shiny Seeker","Ultra Roller"}, {"Shiny Seeker","Ultra Roller"}, "Shadow Crystal", "Shadow Crystal")
+    end
+})
 
 EnchantTab:CreateSection("Bubbler Enchanter")
-EnchantTab:CreateButton({Name = "Team Up V + Bubbler V", Callback = function() RunEnchant({"Team Up V","Bubbler V"}, {"Team Up V","Bubbler V"}, "Gems", "Gems") end})
-EnchantTab:CreateButton({Name = "Determination + Bubbler V", Callback = function() RunEnchant({"Determination","Bubbler V"}, {"Determination","Bubbler V"}, "Shadow Crystal", "Gems") end})
+
+EnchantTab:CreateButton({
+    Name = "Team Up V + Bubbler V",
+    Callback = function()
+        RunEnchant({"Team Up V","Bubbler V"}, {"Team Up V","Bubbler V"}, "Gems", "Gems")
+    end
+})
+
+EnchantTab:CreateButton({
+    Name = "Determination + Bubbler V",
+    Callback = function()
+        RunEnchant({"Determination","Bubbler V"}, {"Determination","Bubbler V"}, "Shadow Crystal", "Gems")
+    end
+})
 
 EnchantTab:CreateSection("Currency Enchanter")
-EnchantTab:CreateButton({Name = "Team Up V + Looter V", Callback = function() RunEnchant({"Team Up V","Looter V"}, {"Team Up V","Looter V"}, "Gems", "Gems") end})
-EnchantTab:CreateButton({Name = "Determination + Looter V", Callback = function() RunEnchant({"Determination","Looter V"}, {"Determination","Looter V"}, "Shadow Crystal", "Gems") end})
+
+EnchantTab:CreateButton({
+    Name = "Team Up V + Looter V",
+    Callback = function()
+        RunEnchant({"Team Up V","Looter V"}, {"Team Up V","Looter V"}, "Gems", "Gems")
+    end
+})
+
+EnchantTab:CreateButton({
+    Name = "Determination + Looter V",
+    Callback = function()
+        RunEnchant({"Determination","Looter V"}, {"Determination","Looter V"}, "Shadow Crystal", "Gems")
+    end
+})
 
 print("[Enchant] Loaded!")
