@@ -1,39 +1,10 @@
 -- ================================================
--- WEBHOOK TAB (CROSS-EXECUTOR FIXED)
+-- WEBHOOK TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local WebhookTab = Window:CreateTab("Webhook", nil)
+local WebhookTab = Window:CreateTab("Webhook")
 
 -- ======================================
 -- SERVICES
@@ -48,7 +19,7 @@ local player = Players.LocalPlayer
 -- ======================================
 -- LOAD SAVED SETTINGS
 -- ======================================
-local settings = Env.HubSettings or {}
+local settings = getgenv().HubSettings or {}
 if not settings.webhook then settings.webhook = {} end
 
 -- ======================================
@@ -59,7 +30,7 @@ local ONLINE_WEBHOOK_URL = settings.webhook.onlineURL or ""
 local DISCORD_USER_ID = settings.webhook.userId or ""
 local PUBLIC_WEBHOOK_URL = "https://discord.com/api/webhooks/1522161241064345691/6plklhELLd8n_zYdwTjTqwTSRdklmffPHXseqPdI-UD25jDUpD2NZRy4FKmvYByfY5fA"
 
-local request = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
+local request = http_request or request or (syn and syn.request)
 if not request then
     WebhookTab:CreateSection("Error")
     WebhookTab:CreateLabel("Your executor doesn't support webhooks!")
@@ -72,17 +43,150 @@ end
 local hideUsername = settings.webhook.hideUsername or false
 local rareEggNotify = settings.webhook.rareEggNotify
 if rareEggNotify == nil then rareEggNotify = true end
+local autoRejoinEnabled = settings.webhook.autoRejoin or false
+
+local oddsThresholdInput = settings.webhook.oddsThreshold or ""
 
 -- ======================================
--- FILTER
+-- TRUE RARITY DETECTION
 -- ======================================
-local TRACKED_RARITIES = {
-    ["Secret"] = true,
-    ["Celestial"] = true,
-    ["Infinity"] = true,
-    ["Void"] = true,
-    ["Super Legendary"] = true,
-}
+local function getTrueRarity(info)
+    if not info then return "Unknown" end
+    
+    if info.Void then
+        return "Void"
+    elseif info.Infinity then
+        return "Infinity"
+    elseif info.Celestial then
+        return "Celestial"
+    elseif info.Rarity then
+        return info.Rarity
+    end
+    
+    return "Unknown"
+end
+
+local function isTrackedRarity(info)
+    local rarity = getTrueRarity(info)
+    if not rarity then return false end
+    
+    if rarity == "Void" or rarity == "Infinity" or rarity == "Celestial" then
+        return true
+    end
+    
+    if rarity:find("Secret") then return true end
+    if rarity:find("Super Legendary") then return true end
+    
+    return false
+end
+
+-- ======================================
+-- ORIGIN DETECTOR
+-- ======================================
+local function getPetOrigin(info)
+    if not info then return "Unknown" end
+    
+    local egg = info.Egg or ""
+    local tag = info.Tag or ""
+    
+    if tag:find("Rebirth Machine") then
+        return "Rebirth Machine"
+    elseif tag:find("Secret Bounty") then
+        return "Bounty"
+    elseif tag:find("Leaderboard") then
+        return "Leaderboard"
+    elseif tag:find("Season") or tag:find("Mega Shop") then
+        return "Season Pass"
+    elseif tag:find("Competitive") or tag:find("Comp") then
+        return "Competitive"
+    elseif tag:find("Global") or tag:find("Incentive") then
+        return "Global Incentive"
+    elseif tag:find("Admin") or info.AdminAbuse then
+        return "Admin Abuse Egg"
+    end
+    
+    if egg and egg ~= "" and egg ~= "Unknown" then
+        return egg
+    end
+    
+    return "Unknown"
+end
+
+-- ======================================
+-- CHECK IF ORIGIN BYPASSES THRESHOLD
+-- ======================================
+local function isOriginBypass(origin, rarity)
+    if origin == "Rebirth Machine" and (rarity == "Celestial" or rarity == "Infinity") then
+        return true
+    end
+    
+    if origin == "Bounty" then
+        return true
+    end
+    
+    if origin == "Season Pass" and (rarity == "Celestial" or rarity == "Infinity" or rarity == "Void") then
+        return true
+    end
+    
+    if origin == "Competitive" then
+        return true
+    end
+    
+    if origin == "Leaderboard" then
+        return true
+    end
+    
+    return false
+end
+
+-- ======================================
+-- CHECK IF PET SHOULD BE SKIPPED
+-- ======================================
+local function shouldSkipPet(origin, rarity)
+    if origin == "Season Pass" and rarity == "Secret" then
+        return true
+    end
+    return false
+end
+
+-- ======================================
+-- ODDS THRESHOLD PARSER
+-- ======================================
+local function parseOddsInput(input)
+    if not input or input == "" then return nil end
+    
+    local text = string.lower(string.gsub(input, "%s+", ""))
+    local num, suffix = text:match("^(%d+%.?%d*)([bmtk]?)$")
+    
+    if not num then return nil end
+    
+    num = tonumber(num)
+    
+    if suffix == "t" then
+        return num * 1e12
+    elseif suffix == "b" then
+        return num * 1e9
+    elseif suffix == "m" then
+        return num * 1e6
+    elseif suffix == "k" then
+        return num * 1e3
+    else
+        return num
+    end
+end
+
+local function getOneInX(chance)
+    if not chance then return math.huge end
+    local chanceNum = tonumber(chance) or 0
+    if chanceNum > 0 then
+        return 100 / chanceNum
+    end
+    return math.huge
+end
+
+local function getThreshold()
+    return parseOddsInput(oddsThresholdInput)
+end
 
 -- ======================================
 -- ENCHANT DISPLAY NAMES
@@ -98,15 +202,57 @@ local ENCHANT_NAMES = {
 }
 
 -- ======================================
--- COLORS
+-- COLORS (FINAL SCHEME)
 -- ======================================
-local COLORS = {
-    Secret = {Normal=0xFF0000,Shiny=0xFFD700,Mythic=0x8B00FF,ShinyMythic=0x00FF00},
-    Celestial = {Normal=0xFF0000,Shiny=0xFFD700,Mythic=0x8B00FF,ShinyMythic=0x00FF00},
-    Infinity = {Normal=0xFF0000,Shiny=0xFFB84D,Mythic=0x7D3CFF,ShinyMythic=0x00E6A8},
-    Void = {Normal=0x0D0D0D,Shiny=0x3AA0FF},
-    ["Super Legendary"] = {Normal=0x1E90FF,Shiny=0xFFD700,Mythic=0x8B00FF,ShinyMythic=0x00FF00}
-}
+local function getColorForPet(rarity, variant, isXL, origin)
+    if isXL then
+        if variant == "Normal" then return 0x808000 end
+        if variant == "Shiny" then return 0x87CEEB end
+        if variant == "Mythic" then return 0x8B008B end
+        if variant == "ShinyMythic" then return 0x006400 end
+    end
+    
+    if origin == "Bounty" and rarity == "Secret" then
+        if variant == "Normal" then return 0xDC143C end
+        if variant == "Shiny" then return 0xFFBF00 end
+        if variant == "Mythic" then return 0xFF69B4 end
+        if variant == "ShinyMythic" then return 0x50C878 end
+    end
+    
+    if rarity == "Secret" then
+        return 0x808080
+    end
+    
+    if rarity == "Celestial" then
+        if variant == "Normal" then return 0x00BFFF end
+        if variant == "Shiny" then return 0xFFFF00 end
+        if variant == "Mythic" then return 0xFF00FF end
+        if variant == "ShinyMythic" then return 0x00FF00 end
+    end
+    
+    if rarity == "Infinity" then
+        if variant == "Normal" then return 0x000080 end
+        if variant == "Shiny" then return 0xFFFF00 end
+        if variant == "Mythic" then return 0xFF00FF end
+        if variant == "ShinyMythic" then return 0x00FF00 end
+    end
+    
+    if rarity == "Void" then
+        if variant == "Normal" then return 0x8A2BE2 end
+        if variant == "Shiny" then return 0xFFFF00 end
+        if variant == "Mythic" then return 0xFF00FF end
+        if variant == "ShinyMythic" then return 0x00FF00 end
+    end
+    
+    if rarity == "Super Legendary" then
+        if variant == "Normal" then return 0x1E90FF end
+        if variant == "Shiny" then return 0xFFFF00 end
+        if variant == "Mythic" then return 0xFF00FF end
+        if variant == "ShinyMythic" then return 0x00FF00 end
+    end
+    
+    return 16777215
+end
 
 -- ======================================
 -- DATA
@@ -161,13 +307,6 @@ local function getExists(petName, variant)
     return "N/A"
 end
 
-local function getVariant(ex)
-    if ex.Shiny and ex.Mythic then return "ShinyMythic"
-    elseif ex.Shiny then return "Shiny"
-    elseif ex.Mythic then return "Mythic"
-    else return "Normal" end
-end
-
 local function getVariantText(v)
     if v=="ShinyMythic" then return "Shiny Mythic"
     elseif v=="Shiny" then return "Shiny"
@@ -176,7 +315,7 @@ local function getVariantText(v)
 end
 
 -- ======================================
--- IMAGE (BG.SI CDN)
+-- IMAGE
 -- ======================================
 local function getImage(petName, ex)
     local n = petName:lower():gsub("%s+", "-"):gsub("[^%w%-]", "")
@@ -243,7 +382,7 @@ local function getBuffTimesForEmbed()
 end
 
 -- ======================================
--- DEBUG STATS EXTRACTION
+-- DEBUG STATS
 -- ======================================
 local function getDebugStats()
     local stats = {
@@ -301,7 +440,7 @@ local function processPublic() if not publicProcessing then publicProcessing = t
 local function processOnline() if not onlineProcessing then onlineProcessing = true task.spawn(function() sendToWebhook(onlineQueue, ONLINE_WEBHOOK_URL) onlineProcessing = false end) end end
 
 -- ======================================
--- STUCK DETECTION (EVERY 2 MIN + 6 MIN BUFFER)
+-- STUCK DETECTION + REJOIN
 -- ======================================
 local lastHatchesForStuck = 0
 local zeroHatchCount = 0
@@ -321,6 +460,7 @@ task.spawn(function()
         task.wait(120)
         if ONLINE_WEBHOOK_URL == "" then continue end
         if isRejoining then continue end
+        if not autoRejoinEnabled then continue end
         
         local currentHatches = 0
         local leaderstats = player:FindFirstChild("leaderstats")
@@ -374,11 +514,12 @@ task.spawn(function()
 end)
 
 -- ======================================
--- REGULAR ONLINE PING (EVERY 30 MIN - NO PING)
+-- REGULAR ONLINE PING
 -- ======================================
 local startTime = os.time()
 local lastPingTime = os.time()
 local lastHatchesForPing = 0
+local regularStuckNotified = false
 
 local leaderstats2 = player:FindFirstChild("leaderstats")
 if leaderstats2 then
@@ -428,17 +569,38 @@ task.spawn(function()
                 "Rainbow: " .. (fragData.Rainbow or 0) .. "/250"
         end
 
+        local isStuck = false
+        if autoRejoinEnabled then
+            isStuck = (perMin == 0 and perHour == 0)
+        end
+        
+        local pingMsg = ""
+        local embedColor = 3447003
+        
+        if isStuck and not regularStuckNotified then
+            if DISCORD_USER_ID ~= "" then
+                pingMsg = "<@" .. DISCORD_USER_ID .. "> Please check your roblox!"
+            else
+                pingMsg = "⚠️ Please check your roblox!"
+            end
+            embedColor = 0xFF0000
+            regularStuckNotified = true
+        elseif not isStuck then
+            regularStuckNotified = false
+        end
+
         table.insert(onlineQueue, {
+            content = pingMsg,
             embeds = {{
-                title = "Still Online!",
+                title = isStuck and "⚠️ STUCK DETECTED!" or "Still Online!",
                 description =
-                    "**" .. player.Name .. "** is still online!\n\n" ..
+                    "**" .. player.Name .. "** is " .. (isStuck and "STUCK!" or "still online!") .. "\n\n" ..
                     "Online: " .. hours .. "h " .. minutes .. "m\n" ..
                     "Coins: " .. coins .. "\nGems: " .. gems .. "\nBubbles: " .. bubbles .. "\n\n" ..
                     "**Hatch Rate**\nPer Minute: " .. perMin .. "\nPer Hour: " .. perHour .. "\n\n" ..
                     "**Fragments**\n" .. fragmentText .. "\n\n" ..
                     "**Stats**\n" .. debugStats.TotalLuck .. "\n" .. debugStats.InfinityLuck .. "\n" .. debugStats.SecretLuck .. "\n" .. debugStats.HatchSpeed,
-                color = 3447003,
+                color = embedColor,
                 footer = {text = "Renoa Hub * " .. os.date("%Y-%m-%d %H:%M:%S")}
             }}
         })
@@ -457,10 +619,8 @@ if initData and initData.Pets then
         if pet.Super then knownPets[pet.Id] = true
         else
             local info = Pets[pet.Name]
-            if info and info.Rarity then
-                for r in pairs(TRACKED_RARITIES) do
-                    if info.Rarity:find(r) then knownPets[pet.Id] = true; break end
-                end
+            if info and isTrackedRarity(info) then
+                knownPets[pet.Id] = true
             end
         end
     end
@@ -484,16 +644,31 @@ task.spawn(function()
                     
                     local shouldTrack = false
                     if isSuper then shouldTrack = true
-                    elseif info and info.Rarity then
-                        for r in pairs(TRACKED_RARITIES) do
-                            if info.Rarity:find(r) then shouldTrack = true; break end
-                        end
+                    elseif info and isTrackedRarity(info) then
+                        shouldTrack = true
                     end
                     
                     if shouldTrack then
-                        local rarity = info and info.Rarity or "Super Legendary"
-                        if isSuper then rarity = "Super Legendary" end
+                        local rarity = isSuper and "Super Legendary" or getTrueRarity(info)
                         knownPets[pet.Id] = true
+                        
+                        local origin = getPetOrigin(info)
+                        
+                        if shouldSkipPet(origin, rarity) then
+                            continue
+                        end
+                        
+                        local threshold = getThreshold()
+                        local shouldSendPrivate = true
+                        
+                        if threshold and not isSuper and not isXL then
+                            if not isOriginBypass(origin, rarity) then
+                                local oneInX = getOneInX(info and info.Chance)
+                                if oneInX <= threshold then
+                                    shouldSendPrivate = false
+                                end
+                            end
+                        end
                         
                         local debugStats = getDebugStats()
                         local statsStr = debugStats.TotalLuck .. "\n" .. debugStats.InfinityLuck .. "\n" .. debugStats.SecretLuck .. "\n" .. debugStats.HatchSpeed
@@ -517,22 +692,24 @@ task.spawn(function()
                             local coins = formatNum(data.Coins or 0)
                             local gems = formatNum(data.Gems or 0)
                             
-                            local embed = {
-                                title = "Congrats You Hatched A "..variant.." Super Legendary "..pet.Name.."!",
-                                color = 0x1E90FF,
-                                fields = {
-                                    {name = "* User Info", value = "Name : "..displayName.."\nCoin : "..coins.."\nGems : "..gems, inline = false},
-                                    {name = "Ultra Legendary Enchant", value = displayStr, inline = false},
-                                    {name = "Stats", value = statsStr, inline = false},
-                                    {name = "Buff Time Left", value = buffStr, inline = false}
-                                },
-                                footer = {text = "Renoa The Finest has Blessed You! * "..os.date("%Y-%m-%d %H:%M:%S")}
-                            }
-                            local pingMsg = "<@"..DISCORD_USER_ID..">"
-                            if displayStr ~= "None" then pingMsg = "<@"..DISCORD_USER_ID..">, You Got "..displayStr.."!" end
-                            
-                            table.insert(hatchQueue, {content = DISCORD_USER_ID ~= "" and pingMsg or nil, embeds = {embed}})
-                            processHatch()
+                            if shouldSendPrivate then
+                                local embed = {
+                                    title = "Congrats You Hatched A "..variant.." Super Legendary "..pet.Name.."!",
+                                    color = 0x1E90FF,
+                                    fields = {
+                                        {name = "* User Info", value = "Name : "..displayName.."\nCoin : "..coins.."\nGems : "..gems, inline = false},
+                                        {name = "Ultra Legendary Enchant", value = displayStr, inline = false},
+                                        {name = "Stats", value = statsStr, inline = false},
+                                        {name = "Buff Time Left", value = buffStr, inline = false}
+                                    },
+                                    footer = {text = "Renoa The Finest has Blessed You! * "..os.date("%Y-%m-%d %H:%M:%S")}
+                                }
+                                local pingMsg = "<@"..DISCORD_USER_ID..">"
+                                if displayStr ~= "None" then pingMsg = "<@"..DISCORD_USER_ID..">, You Got "..displayStr.."!" end
+                                
+                                table.insert(hatchQueue, {content = DISCORD_USER_ID ~= "" and pingMsg or nil, embeds = {embed}})
+                                processHatch()
+                            end
                             
                             local publicEmbed = {
                                 title = "Congrats You Hatched A "..variant.." Super Legendary "..pet.Name.."!",
@@ -548,49 +725,57 @@ task.spawn(function()
                             processPublic()
                         else
                             local variant = "Normal"
-                            if isXL and pet.Shiny and pet.Mythic then variant = "XL Shiny Mythic"
-                            elseif isXL and pet.Shiny then variant = "XL Shiny"
-                            elseif isXL and pet.Mythic then variant = "XL Mythic"
-                            elseif isXL then variant = "XL"
-                            elseif pet.Shiny and pet.Mythic then variant = "Shiny Mythic"
-                            elseif pet.Shiny then variant = "Shiny"
-                            elseif pet.Mythic then variant = "Mythic" end
-                            local color = (COLORS[rarity] and COLORS[rarity][variant:gsub("^XL ", "")]) or 16777215
-                            if isXL then color = 0xFFA500 end
+                            local variantKey = "Normal"
+                            if isXL and pet.Shiny and pet.Mythic then variant = "XL Shiny Mythic"; variantKey = "ShinyMythic"
+                            elseif isXL and pet.Shiny then variant = "XL Shiny"; variantKey = "Shiny"
+                            elseif isXL and pet.Mythic then variant = "XL Mythic"; variantKey = "Mythic"
+                            elseif isXL then variant = "XL"; variantKey = "Normal"
+                            elseif pet.Shiny and pet.Mythic then variant = "Shiny Mythic"; variantKey = "ShinyMythic"
+                            elseif pet.Shiny then variant = "Shiny"; variantKey = "Shiny"
+                            elseif pet.Mythic then variant = "Mythic"; variantKey = "Mythic" end
+                            
+                            local color = getColorForPet(rarity, variantKey, isXL, origin)
                             local img = getImage(pet.Name, {Shiny=pet.Shiny, Mythic=pet.Mythic})
                             local displayName = hideUsername and "Hidden" or player.Name
                             local coins = formatNum(data.Coins or 0)
                             local gems = formatNum(data.Gems or 0)
                             local opened = formatNum(data.EggsOpened and data.EggsOpened["Common Egg"] or 0)
                             local chance = info and getPetChance(info) or "Unknown"
-                            local existStr = getExists(pet.Name, variant ~= "Normal" and getVariantText(variant:gsub("^XL ", "")) or nil)
+                            local existStr = getExists(pet.Name, variant ~= "Normal" and getVariantText(variantKey) or nil)
                             local displayRarity = isXL and ("XL " .. rarity) or rarity
                             
-                            local embed = {
-                                title = "Congrats You Hatched A "..variant.." "..displayRarity.." "..pet.Name.."!",
-                                color = color,
-                                fields = {
-                                    {name = "* User Info", value = "Name : "..displayName.."\nCoin : "..coins.."\nGems : "..gems.."\nEgg Hatched : "..opened, inline = false},
-                                    {name = "Pet Info", value = "Chance : "..chance.."\nExist : "..existStr, inline = false},
-                                    {name = "Stats", value = statsStr, inline = false},
-                                    {name = "Buff Time Left", value = buffStr, inline = false}
-                                },
-                                footer = {text = "Renoa The Finest has Blessed You! * "..os.date("%Y-%m-%d %H:%M:%S")}
-                            }
-                            if img then embed.thumbnail = {url = img} end
-                            
-                            table.insert(hatchQueue, {
-                                content = (rarity:find("Secret") and DISCORD_USER_ID ~= "") and "<@"..DISCORD_USER_ID..">" or nil,
-                                embeds = {embed}
-                            })
-                            processHatch()
+                            if shouldSendPrivate then
+                                local embed = {
+                                    title = "Congrats You Hatched A "..variant.." "..displayRarity.." "..pet.Name.."!",
+                                    color = color,
+                                    fields = {
+                                        {name = "* User Info", value = "Name : "..displayName.."\nCoin : "..coins.."\nGems : "..gems.."\nEgg Hatched : "..opened, inline = false},
+                                        {name = "Pet Info", value = "Chance : "..chance.."\nExist : "..existStr.."\nOrigin : "..origin, inline = false},
+                                        {name = "Stats", value = statsStr, inline = false},
+                                        {name = "Buff Time Left", value = buffStr, inline = false}
+                                    },
+                                    footer = {text = "Renoa The Finest has Blessed You! * "..os.date("%Y-%m-%d %H:%M:%S")}
+                                }
+                                if img then embed.thumbnail = {url = img} end
+                                
+                                local pingContent = nil
+                                if DISCORD_USER_ID ~= "" then
+                                    pingContent = "<@"..DISCORD_USER_ID..">"
+                                end
+                                
+                                table.insert(hatchQueue, {
+                                    content = pingContent,
+                                    embeds = {embed}
+                                })
+                                processHatch()
+                            end
                             
                             local publicEmbed = {
                                 title = "Congrats You Hatched A "..variant.." "..displayRarity.." "..pet.Name.."!",
                                 color = color,
                                 fields = {
                                     {name = "* User Info", value = "Name : Hidden", inline = false},
-                                    {name = "Pet Info", value = "Chance : "..chance.."\nExist : "..existStr, inline = false},
+                                    {name = "Pet Info", value = "Chance : "..chance.."\nExist : "..existStr.."\nOrigin : "..origin, inline = false},
                                     {name = "Stats", value = statsStr, inline = false}
                                 },
                                 footer = {text = "Renoa The Finest has Blessed You! * "..os.date("%Y-%m-%d %H:%M:%S")}
@@ -607,7 +792,7 @@ task.spawn(function()
 end)
 
 -- ======================================
--- SPECIAL EVENTS SCANNER (4X EGG ONLY)
+-- SPECIAL EVENTS SCANNER (4X EGG)
 -- ======================================
 local was4xPlushieActive = false
 
@@ -645,7 +830,7 @@ local success, mod = pcall(function() return require(ReplicatedStorage.Client.Ef
 if success and mod then
     local originalPlay = mod.Play
     mod.Play = newcclosure(function(self, data)
-        if Env.animationHidden then return end
+        if getgenv().animationHidden then return end
         return originalPlay(self, data)
     end)
 end
@@ -663,7 +848,7 @@ WebhookTab:CreateInput({
     Callback = function(v)
         HATCH_WEBHOOK_URL = v
         settings.webhook.hatchURL = v
-        Env.HubSettings.webhook = settings.webhook
+        getgenv().HubSettings.webhook = settings.webhook
         saveHubSettings()
     end
 })
@@ -676,7 +861,7 @@ WebhookTab:CreateInput({
     Callback = function(v)
         ONLINE_WEBHOOK_URL = v
         settings.webhook.onlineURL = v
-        Env.HubSettings.webhook = settings.webhook
+        getgenv().HubSettings.webhook = settings.webhook
         saveHubSettings()
     end
 })
@@ -689,7 +874,28 @@ WebhookTab:CreateInput({
     Callback = function(v)
         DISCORD_USER_ID = v
         settings.webhook.userId = v
-        Env.HubSettings.webhook = settings.webhook
+        getgenv().HubSettings.webhook = settings.webhook
+        saveHubSettings()
+    end
+})
+
+WebhookTab:CreateSection("Odds Threshold (Private Only)")
+
+WebhookTab:CreateLabel("Only sends private webhook if pet is RARER than this")
+WebhookTab:CreateLabel("Format: 10B = 1/10B, 100M = 1/100M, 1T = 1/1T")
+WebhookTab:CreateLabel("Leave empty to send ALL pets")
+WebhookTab:CreateLabel("Does NOT affect: Super Legendary & XL pets")
+WebhookTab:CreateLabel("Bypass: Rebirth(Cel+Inf), Bounty, Season(Cel+Inf+Void), Comp, Leaderboard")
+
+WebhookTab:CreateInput({
+    Name = "Only Notify Above (e.g., 10B)",
+    CurrentValue = oddsThresholdInput,
+    PlaceholderText = "10B / 100M / 1T (empty = off)",
+    RemoveTextAfterFocusLost = false,
+    Callback = function(v)
+        oddsThresholdInput = v
+        settings.webhook.oddsThreshold = v
+        getgenv().HubSettings.webhook = settings.webhook
         saveHubSettings()
     end
 })
@@ -702,7 +908,7 @@ WebhookTab:CreateToggle({
     Callback = function(v)
         hideUsername = v
         settings.webhook.hideUsername = v
-        Env.HubSettings.webhook = settings.webhook
+        getgenv().HubSettings.webhook = settings.webhook
         saveHubSettings()
     end
 })
@@ -713,7 +919,18 @@ WebhookTab:CreateToggle({
     Callback = function(v)
         rareEggNotify = v
         settings.webhook.rareEggNotify = v
-        Env.HubSettings.webhook = settings.webhook
+        getgenv().HubSettings.webhook = settings.webhook
+        saveHubSettings()
+    end
+})
+
+WebhookTab:CreateToggle({
+    Name = "Auto Rejoin When Stuck",
+    CurrentValue = autoRejoinEnabled,
+    Callback = function(v)
+        autoRejoinEnabled = v
+        settings.webhook.autoRejoin = v
+        getgenv().HubSettings.webhook = settings.webhook
         saveHubSettings()
     end
 })
@@ -722,9 +939,14 @@ WebhookTab:CreateSection("Status")
 WebhookTab:CreateLabel("Webhook is Running!")
 WebhookTab:CreateLabel("Tracking: Secret, Celestial, Infinity, Void, Super Legendary, XL")
 WebhookTab:CreateLabel("Alerts: 4x Egg")
-WebhookTab:CreateLabel("Online ping: Every 30 minutes (with Hatch Rate)")
-WebhookTab:CreateLabel("Stuck detection: Every 2 min, rejoin after 6 min of no hatches")
+WebhookTab:CreateLabel("Online ping: Every 30 minutes")
+WebhookTab:CreateLabel("Stuck detection: Every 2 min, rejoin after 6 min")
 WebhookTab:CreateLabel("Fragments + Stats + Buff Times added")
+WebhookTab:CreateLabel("Odds Threshold: Private only, XL & Super exempt")
+WebhookTab:CreateLabel("Origin Bypass: Rebirth(Cel+Inf), Bounty, Season(Cel+Inf+Void), Comp, Leaderboard")
+WebhookTab:CreateLabel("Skip: Season Pass Secret pets (never notified)")
+WebhookTab:CreateLabel("Ping: ALL tracked rarities now ping User ID")
+WebhookTab:CreateLabel("Colors: Celestial=Neon Blue, Infinity=Navy, Void=Andromeda")
 WebhookTab:CreateLabel("Ping: "..(DISCORD_USER_ID ~= "" and "ON <@"..DISCORD_USER_ID..">" or "OFF"))
 
-print("Webhook Is Online, Good Luck Hatching Guys! Me (Renoa The Finest) Wishing for our luck")
+print("[Webhook] Loaded!")
