@@ -1,39 +1,10 @@
 -- ================================================
--- POTION TAB (CROSS-EXECUTOR FIXED)
+-- POTION TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local PotionTab = Window:CreateTab("Potions", nil)
+local PotionTab = Window:CreateTab("Potions")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
@@ -45,7 +16,7 @@ local RE = ReplicatedStorage.Shared.Framework.Network.Remote.RemoteEvent
 -- ======================================
 -- LOAD SAVED SETTINGS
 -- ======================================
-local settings = Env.HubSettings or {}
+local settings = getgenv().HubSettings or {}
 if not settings.potions then settings.potions = {} end
 local potionSettings = settings.potions
 
@@ -118,11 +89,11 @@ PotionTab:CreateSection("Normal Potion")
 PotionTab:CreateDropdown({
     Name = "Select Potion",
     Options = normalOptions,
-    CurrentOption = {selectedNormal},
+    CurrentOption = selectedNormal,
     Callback = function(v)
-        selectedNormal = v[1]
-        potionSettings.normalSelected = v[1]
-        Env.HubSettings.potions = potionSettings
+        selectedNormal = v
+        potionSettings.normalSelected = v
+        getgenv().HubSettings.potions = potionSettings
         saveHubSettings()
     end
 })
@@ -137,7 +108,7 @@ PotionTab:CreateInput({
         if n then
             normalAmount = math.min(n, 250)
             potionSettings.normalAmount = normalAmount
-            Env.HubSettings.potions = potionSettings
+            getgenv().HubSettings.potions = potionSettings
             saveHubSettings()
         end
     end
@@ -149,11 +120,11 @@ PotionTab:CreateToggle({
     Callback = function(v)
         normalRunning = v
         potionSettings.normalRunning = v
-        Env.HubSettings.potions = potionSettings
+        getgenv().HubSettings.potions = potionSettings
         saveHubSettings()
         if v then
-            Env.ActivityStatus.current = "Start Auto use " .. selectedNormal
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Start Auto use " .. selectedNormal
+            getgenv().ActivityStatus.trigger = true
             
             normalThread = task.spawn(function()
                 while normalRunning do
@@ -185,8 +156,8 @@ PotionTab:CreateToggle({
             end)
         else
             if normalThread then task.cancel(normalThread) end
-            Env.ActivityStatus.current = "Stopped Auto use " .. selectedNormal
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Stopped Auto use " .. selectedNormal
+            getgenv().ActivityStatus.trigger = true
         end
     end
 })
@@ -199,11 +170,11 @@ PotionTab:CreateSection("Special Potion")
 PotionTab:CreateDropdown({
     Name = "Select Potion",
     Options = SPECIAL_POTIONS,
-    CurrentOption = {selectedSpecial},
+    CurrentOption = selectedSpecial,
     Callback = function(v)
-        selectedSpecial = v[1]
-        potionSettings.specialSelected = v[1]
-        Env.HubSettings.potions = potionSettings
+        selectedSpecial = v
+        potionSettings.specialSelected = v
+        getgenv().HubSettings.potions = potionSettings
         saveHubSettings()
     end
 })
@@ -218,7 +189,7 @@ PotionTab:CreateInput({
         if n then
             specialAmount = math.min(n, 250)
             potionSettings.specialAmount = specialAmount
-            Env.HubSettings.potions = potionSettings
+            getgenv().HubSettings.potions = potionSettings
             saveHubSettings()
         end
     end
@@ -230,11 +201,11 @@ PotionTab:CreateToggle({
     Callback = function(v)
         specialRunning = v
         potionSettings.specialRunning = v
-        Env.HubSettings.potions = potionSettings
+        getgenv().HubSettings.potions = potionSettings
         saveHubSettings()
         if v then
-            Env.ActivityStatus.current = "Start Auto use " .. selectedSpecial
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Start Auto use " .. selectedSpecial
+            getgenv().ActivityStatus.trigger = true
             
             specialThread = task.spawn(function()
                 while specialRunning do
@@ -259,8 +230,8 @@ PotionTab:CreateToggle({
             end)
         else
             if specialThread then task.cancel(specialThread) end
-            Env.ActivityStatus.current = "Stopped Auto use " .. selectedSpecial
-            Env.ActivityStatus.trigger = true
+            getgenv().ActivityStatus.current = "Stopped Auto use " .. selectedSpecial
+            getgenv().ActivityStatus.trigger = true
         end
     end
 })
@@ -274,11 +245,11 @@ if #eventPotions > 0 then
     PotionTab:CreateDropdown({
         Name = "Select Event Potion",
         Options = eventPotions,
-        CurrentOption = {selectedEvent},
+        CurrentOption = selectedEvent,
         Callback = function(v)
-            selectedEvent = v[1]
-            potionSettings.eventSelected = v[1]
-            Env.HubSettings.potions = potionSettings
+            selectedEvent = v
+            potionSettings.eventSelected = v
+            getgenv().HubSettings.potions = potionSettings
             saveHubSettings()
         end
     })
@@ -293,7 +264,7 @@ if #eventPotions > 0 then
             if n then
                 eventAmount = math.min(n, 250)
                 potionSettings.eventAmount = eventAmount
-                Env.HubSettings.potions = potionSettings
+                getgenv().HubSettings.potions = potionSettings
                 saveHubSettings()
             end
         end
@@ -304,6 +275,7 @@ if #eventPotions > 0 then
         Callback = function()
             eventPotions = getEventPotions()
             selectedEvent = eventPotions[1] or ""
+            print("[Potions] Found " .. #eventPotions .. " event potions")
         end
     })
 
@@ -313,11 +285,11 @@ if #eventPotions > 0 then
         Callback = function(v)
             eventRunning = v
             potionSettings.eventRunning = v
-            Env.HubSettings.potions = potionSettings
+            getgenv().HubSettings.potions = potionSettings
             saveHubSettings()
             if v then
-                Env.ActivityStatus.current = "Start Auto use " .. selectedEvent
-                Env.ActivityStatus.trigger = true
+                getgenv().ActivityStatus.current = "Start Auto use " .. selectedEvent
+                getgenv().ActivityStatus.trigger = true
                 
                 eventThread = task.spawn(function()
                     while eventRunning do
@@ -344,8 +316,8 @@ if #eventPotions > 0 then
                 end)
             else
                 if eventThread then task.cancel(eventThread) end
-                Env.ActivityStatus.current = "Stopped Auto use " .. selectedEvent
-                Env.ActivityStatus.trigger = true
+                getgenv().ActivityStatus.current = "Stopped Auto use " .. selectedEvent
+                getgenv().ActivityStatus.trigger = true
             end
         end
     })
@@ -356,98 +328,9 @@ else
         Callback = function()
             eventPotions = getEventPotions()
             selectedEvent = eventPotions[1] or ""
+            print("[Potions] Found " .. #eventPotions .. " event potions")
         end
     })
-end
-
--- ======================================
--- AUTO-START SAVED TOGGLES
--- ======================================
-if potionSettings.normalRunning then
-    normalRunning = true
-    Env.ActivityStatus.current = "Start Auto use " .. selectedNormal
-    Env.ActivityStatus.trigger = true
-    
-    normalThread = task.spawn(function()
-        while normalRunning do
-            local parts = {}
-            for part in string.gmatch(selectedNormal, "%S+") do
-                table.insert(parts, part)
-            end
-            local potionName = table.concat(parts, " ", 1, #parts - 1)
-            local level = tonumber(parts[#parts]) or 1
-            
-            local data = LocalData:Get()
-            local actualAmount = normalAmount
-            if data and data.Potions then
-                for _, potion in pairs(data.Potions) do
-                    if potion.Name == potionName and potion.Level == level then
-                        if potion.Amount < normalAmount then actualAmount = potion.Amount end
-                        break
-                    end
-                end
-            end
-            
-            if actualAmount > 0 then
-                pcall(function() RE:FireServer("UsePotion", potionName, level, actualAmount) end)
-            end
-            task.wait(0.1)
-        end
-    end)
-end
-
-if potionSettings.specialRunning then
-    specialRunning = true
-    Env.ActivityStatus.current = "Start Auto use " .. selectedSpecial
-    Env.ActivityStatus.trigger = true
-    
-    specialThread = task.spawn(function()
-        while specialRunning do
-            local data = LocalData:Get()
-            local actualAmount = specialAmount
-            if data and data.Potions then
-                for _, potion in pairs(data.Potions) do
-                    if potion.Name == selectedSpecial then
-                        if potion.Amount < specialAmount then actualAmount = potion.Amount end
-                        break
-                    end
-                end
-            end
-            
-            if actualAmount > 0 then
-                pcall(function() RE:FireServer("UsePotion", selectedSpecial, 1, actualAmount) end)
-            end
-            task.wait(0.1)
-        end
-    end)
-end
-
-if potionSettings.eventRunning then
-    eventRunning = true
-    Env.ActivityStatus.current = "Start Auto use " .. selectedEvent
-    Env.ActivityStatus.trigger = true
-    
-    eventThread = task.spawn(function()
-        while eventRunning do
-            local data = LocalData:Get()
-            local actualAmount = eventAmount
-            local potionLevel = 1
-            if data and data.Potions then
-                for _, potion in pairs(data.Potions) do
-                    if potion.Name == selectedEvent then
-                        potionLevel = potion.Level
-                        if potion.Amount < eventAmount then actualAmount = potion.Amount end
-                        break
-                    end
-                end
-            end
-            
-            if actualAmount > 0 then
-                pcall(function() RE:FireServer("UsePotion", selectedEvent, potionLevel, actualAmount) end)
-            end
-            task.wait(0.1)
-        end
-    end)
 end
 
 print("[Potions] Loaded!")
