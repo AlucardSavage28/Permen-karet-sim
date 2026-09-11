@@ -1,46 +1,17 @@
 -- ================================================
--- ACTIVITY INFO TAB (CROSS-EXECUTOR FIXED)
+-- ACTIVITY INFO TAB (RENOA UI VERSION)
 -- ================================================
+repeat task.wait() until getgenv().Window
+local Window = getgenv().Window
 
--- Cross-executor compatibility patch
-local Env = getgenv and getgenv() or shared or _G
-
--- Safe firesignal (FIXED)
-if not firesignal then
-    function firesignal(signal, ...)
-        pcall(signal.Fire, signal, ...)
-    end
-end
-
--- Safe newcclosure
-if not newcclosure then
-    function newcclosure(fn)
-        return fn
-    end
-end
-
--- Safe setclipboard
-if not setclipboard then
-    function setclipboard(text)
-        if writeclipboard then
-            writeclipboard(text)
-        elseif syn and syn.write_clipboard then
-            syn.write_clipboard(text)
-        end
-    end
-end
-
-repeat task.wait() until Env.Window
-local Window = Env.Window
-
-local ActivityTab = Window:CreateTab("Activity Info", nil)
+local ActivityTab = Window:CreateTab("Activity Info")
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 
-local request = http_request or request or (syn and syn.request) or (fluxus and fluxus.request)
+local request = http_request or request or (syn and syn.request)
 
 if not request then
     ActivityTab:CreateSection("Error")
@@ -51,7 +22,7 @@ end
 -- ======================================
 -- LOAD SAVED SETTINGS
 -- ======================================
-local settings = Env.HubSettings or {}
+local settings = getgenv().HubSettings or {}
 if not settings.activity then settings.activity = {} end
 local activitySettings = settings.activity
 
@@ -63,8 +34,8 @@ local activityEnabled = activitySettings.enabled or false
 local lastSent = ""
 
 -- Initialize global activity tracker
-if not Env.ActivityStatus then
-    Env.ActivityStatus = {
+if not getgenv().ActivityStatus then
+    getgenv().ActivityStatus = {
         current = "Idle",
         trigger = false,
     }
@@ -101,7 +72,7 @@ end
 task.spawn(function()
     while true do
         task.wait(3)
-        local status = Env.ActivityStatus
+        local status = getgenv().ActivityStatus
         if status.trigger and status.current ~= lastSent then
             sendActivity(status.current)
             status.trigger = false
@@ -112,11 +83,10 @@ end)
 -- ======================================
 -- UI
 -- ======================================
-ActivityTab:CreateSection("Activity Info")
+ActivityTab:CreateSection("Activity Webhook")
 
 ActivityTab:CreateLabel("Sends webhook when your character is actively doing something")
 ActivityTab:CreateLabel("Only sends when the action is actually being performed, not on toggle")
-ActivityTab:CreateLabel("Discord User ID is used by other tabs for pinging you!")
 
 ActivityTab:CreateInput({
     Name = "Activity Webhook URL",
@@ -126,19 +96,7 @@ ActivityTab:CreateInput({
     Callback = function(v)
         activityWebhookURL = v
         activitySettings.webhookURL = v
-        Env.HubSettings.activity = activitySettings
-        saveHubSettings()
-    end
-})
-
-ActivityTab:CreateInput({
-    Name = "Discord User ID (for pings in other tabs)",
-    CurrentValue = activitySettings.userId or "",
-    PlaceholderText = "Discord_User_ID",
-    RemoveTextAfterFocusLost = false,
-    Callback = function(v)
-        activitySettings.userId = v
-        Env.HubSettings.activity = activitySettings
+        getgenv().HubSettings.activity = activitySettings
         saveHubSettings()
     end
 })
@@ -150,7 +108,7 @@ ActivityTab:CreateToggle({
         activityEnabled = v
         lastSent = ""
         activitySettings.enabled = v
-        Env.HubSettings.activity = activitySettings
+        getgenv().HubSettings.activity = activitySettings
         saveHubSettings()
     end
 })
